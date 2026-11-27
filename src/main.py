@@ -9,12 +9,20 @@ from analytics import (
     calculate_relative_performance,
 )
 
+from providers.yahoo_provider import fetch_yahoo_prices
 
 DATA_DIR = Path("data/sample")
 
 # These starter values mirror config/settings.yml.
 LOOKBACK_LABEL = "1 month"
 INTERVAL_LABEL = "Daily"
+
+PROVIDER_LABEL = "Yahoo Finance via yfinance"
+
+YAHOO_SYMBOLS = {
+    "AAPL": "AAPL",
+    "SP500": "^GSPC",
+}
 
 
 def load_instruments():
@@ -45,18 +53,23 @@ def filter_prices(prices, ticker):
 
 def main():
     instruments = load_instruments()
-    prices = load_prices()
-
-    normalized_prices = [
-        normalize_price_row(row)
-        for row in prices
-    ]
 
     instrument = instruments["instrument"]
     benchmark = instruments["benchmark"]
 
-    instrument_prices = filter_prices(normalized_prices, instrument["ticker"])
-    benchmark_prices = filter_prices(normalized_prices, benchmark["ticker"])
+    instrument_prices = fetch_yahoo_prices(
+        symbol=YAHOO_SYMBOLS[instrument["ticker"]],
+        canonical_ticker=instrument["ticker"],
+        period="1mo",
+        interval="1d",
+    )
+
+    benchmark_prices = fetch_yahoo_prices(
+        symbol=YAHOO_SYMBOLS[benchmark["ticker"]],
+        canonical_ticker=benchmark["ticker"],
+        period="1mo",
+        interval="1d",
+    )
 
     aligned_instrument, aligned_benchmark = align_series(
         instrument_prices,
@@ -75,6 +88,9 @@ def main():
     benchmark_base_100 = calculate_base_100(aligned_benchmark)
 
     print("=== MarketPulse ===")
+    print()
+    print("Provider")
+    print(PROVIDER_LABEL)
     print()
     print("Market configuration")
     print(f"Period   : {LOOKBACK_LABEL}")
